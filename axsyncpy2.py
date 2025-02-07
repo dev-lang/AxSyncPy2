@@ -10,17 +10,22 @@ import argparse
 # Funciones comunes
 # ----------------------------
 
-def check_or_create_directory(path):
+def check_or_create_directory(path, auto_create=False):
     if not os.path.exists(path):
-        print(f"La carpeta de destino '{path}' no existe.")
-        respuesta = input("¿Deseas crearla? (Y/N): ").strip().lower()
-        if respuesta == 'y':
+        if auto_create:
             os.makedirs(path)
-            print(f"Carpeta '{path}' creada.")
+            print(f"Carpeta '{path}' creada automáticamente.")
             return True
         else:
-            print("Descarga cancelada.")
-            return False
+            print(f"La carpeta de destino '{path}' no existe.")
+            respuesta = input("¿Deseas crearla? (Y/N): ").strip().lower()
+            if respuesta == 'y':
+                os.makedirs(path)
+                print(f"Carpeta '{path}' creada.")
+                return True
+            else:
+                print("Descarga cancelada.")
+                return False
     return True
 
 def get_filename_from_url(url):
@@ -104,8 +109,8 @@ def download_file(url, file_path, num_threads=8):
         print(f"El archivo {os.path.basename(file_path)} es grande. Descargando con {num_threads} hilos...")
         download_file_multithread(url, file_path, num_threads)
 
-def download_directory(base_url, destination_folder, num_threads=8):
-    if not check_or_create_directory(destination_folder):
+def download_directory(base_url, destination_folder, num_threads=8, auto_create=False):
+    if not check_or_create_directory(destination_folder, auto_create):
         return
     
     response = requests.get(base_url, headers={'Accept-Encoding': 'identity'})
@@ -124,8 +129,8 @@ def download_directory(base_url, destination_folder, num_threads=8):
         except Exception as e:
             print(f"Error al descargar {file_name}: {e}")
 
-def process_urls(input_file, base_destination, num_threads=8):
-    if not check_or_create_directory(base_destination):
+def process_urls(input_file, base_destination, num_threads=8, auto_create=False):
+    if not check_or_create_directory(base_destination, auto_create):
         return
     
     with open(input_file, 'r') as f:
@@ -136,14 +141,14 @@ def process_urls(input_file, base_destination, num_threads=8):
         folder_name = parsed_url.path.strip('/').split('/')[-1]
         destination_folder = os.path.join(base_destination, folder_name)
         
-        if not check_or_create_directory(destination_folder):
+        if not check_or_create_directory(destination_folder, auto_create):
             continue
         
         print(f"\nDescargando carpeta: {folder_name}")
         print(f"URL: {url}")
         print(f"Destino: {destination_folder}")
         
-        download_directory(url, destination_folder, num_threads)
+        download_directory(url, destination_folder, num_threads, auto_create)
 
 # ----------------------------
 # Configuración de Argumentos
@@ -166,6 +171,11 @@ def parse_arguments():
         help="Número de hilos (debe ser mayor que 0, default: 8)."
     )
     parser.add_argument("--url", "-u", help="URL de un directorio para descargar todos sus archivos.")
+    parser.add_argument(
+        "--auto-create-dirs", "-a", 
+        action="store_true",  # Parámetro booleano
+        help="Crear automáticamente las carpetas necesarias sin preguntar."
+    )
     return parser.parse_args()
 
 # ----------------------------
@@ -180,6 +190,7 @@ def print_configuration(args):
         print(f"- URL del directorio: {args.url}")
     elif args.input:
         print(f"- Archivo de URLs: {args.input}")
+    print(f"- Crear carpetas automáticamente: {'Sí' if args.auto_create_dirs else 'No'}")
     print("-" * 40)
 
 if __name__ == "__main__":
@@ -199,10 +210,10 @@ if __name__ == "__main__":
         print(f"URL: {args.url}")
         print(f"Destino: {destination_folder}")
         
-        download_directory(args.url, destination_folder, args.threads)
+        download_directory(args.url, destination_folder, args.threads, args.auto_create_dirs)
     elif args.input:
         # Procesar el archivo de texto con URLs
-        process_urls(args.input, args.output, args.threads)
+        process_urls(args.input, args.output, args.threads, args.auto_create_dirs)
     else:
         print("Error: Debes proporcionar --input o --url.")
         exit(1)
