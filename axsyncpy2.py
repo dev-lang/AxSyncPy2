@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 import argparse
+import time  # Importamos la librería time para manejar los retrasos
 
 # ----------------------------
 # Funciones comunes
@@ -95,7 +96,7 @@ def download_file_single_thread(url, file_path):
                 pbar.update(len(chunk))
 
 # ----------------------------
-# Lógica Principal
+# Lógica Principal (Modificada)
 # ----------------------------
 
 def download_file(url, file_path, num_threads=8):
@@ -109,7 +110,7 @@ def download_file(url, file_path, num_threads=8):
         print(f"El archivo {os.path.basename(file_path)} es grande. Descargando con {num_threads} hilos...")
         download_file_multithread(url, file_path, num_threads)
 
-def download_directory(base_url, destination_folder, num_threads=8, auto_create=False):
+def download_directory(base_url, destination_folder, num_threads=8, auto_create=False, file_delay=0):
     if not check_or_create_directory(destination_folder, auto_create):
         return
     
@@ -126,10 +127,13 @@ def download_directory(base_url, destination_folder, num_threads=8, auto_create=
         
         try:
             download_file(file_url, file_path, num_threads)
+            if file_delay > 0:  # Aplicar retraso entre archivos
+                print(f"Esperando {file_delay} segundos antes de la próxima descarga...")
+                time.sleep(file_delay)
         except Exception as e:
             print(f"Error al descargar {file_name}: {e}")
 
-def process_urls(input_file, base_destination, num_threads=8, auto_create=False):
+def process_urls(input_file, base_destination, num_threads=8, auto_create=False, url_delay=0):
     if not check_or_create_directory(base_destination, auto_create):
         return
     
@@ -148,10 +152,14 @@ def process_urls(input_file, base_destination, num_threads=8, auto_create=False)
         print(f"URL: {url}")
         print(f"Destino: {destination_folder}")
         
-        download_directory(url, destination_folder, num_threads, auto_create)
+        download_directory(url, destination_folder, num_threads, auto_create, file_delay=args.file_delay)
+        
+        if url_delay > 0:  # Aplicar retraso entre URLs
+            print(f"Esperando {url_delay} segundos antes de la próxima URL...")
+            time.sleep(url_delay)
 
 # ----------------------------
-# Configuración de Argumentos
+# Configuración de Argumentos (Modificada)
 # ----------------------------
 
 def positive_int(value):
@@ -176,10 +184,22 @@ def parse_arguments():
         action="store_true",  # Parámetro booleano
         help="Crear automáticamente las carpetas necesarias sin preguntar."
     )
+    parser.add_argument(
+        "--file-delay", 
+        type=float, 
+        default=0, 
+        help="Retraso en segundos entre la descarga de cada archivo (default: 0)."
+    )
+    parser.add_argument(
+        "--url-delay", 
+        type=float, 
+        default=0, 
+        help="Retraso en segundos entre la descarga de cada URL (default: 0)."
+    )
     return parser.parse_args()
 
 # ----------------------------
-# Punto de Entrada
+# Punto de Entrada (Modificado)
 # ----------------------------
 
 def print_configuration(args):
@@ -191,6 +211,8 @@ def print_configuration(args):
     elif args.input:
         print(f"- Archivo de URLs: {args.input}")
     print(f"- Crear carpetas automáticamente: {'Sí' if args.auto_create_dirs else 'No'}")
+    print(f"- Retraso entre archivos: {args.file_delay} segundos")
+    print(f"- Retraso entre URLs: {args.url_delay} segundos")
     print("-" * 40)
 
 if __name__ == "__main__":
@@ -210,10 +232,10 @@ if __name__ == "__main__":
         print(f"URL: {args.url}")
         print(f"Destino: {destination_folder}")
         
-        download_directory(args.url, destination_folder, args.threads, args.auto_create_dirs)
+        download_directory(args.url, destination_folder, args.threads, args.auto_create_dirs, args.file_delay)
     elif args.input:
         # Procesar el archivo de texto con URLs
-        process_urls(args.input, args.output, args.threads, args.auto_create_dirs)
+        process_urls(args.input, args.output, args.threads, args.auto_create_dirs, args.url_delay)
     else:
         print("Error: Debes proporcionar --input o --url.")
         exit(1)
