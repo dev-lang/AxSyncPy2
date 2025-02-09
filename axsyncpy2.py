@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 import argparse
-import time  # Importamos la librería time para manejar los retrasos
+import time
 
 # ----------------------------
 # Funciones comunes
@@ -168,6 +168,12 @@ def positive_int(value):
         raise argparse.ArgumentTypeError("El número de hilos debe ser mayor que 0.")
     return ivalue
 
+def positive_float(value):
+    fvalue = float(value)
+    if fvalue < 0:
+        raise argparse.ArgumentTypeError("El valor no puede ser negativo.")
+    return fvalue
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Descargar archivos desde URLs FTP.")
     parser.add_argument("--input", "-i", help="Archivo de texto con URLs de carpetas.")
@@ -186,15 +192,15 @@ def parse_arguments():
     )
     parser.add_argument(
         "--file-delay", 
-        type=float, 
+        type=positive_float,  # Validación personalizada
         default=0, 
-        help="Retraso en segundos entre la descarga de cada archivo (default: 0)."
+        help="Retraso en segundos entre la descarga de cada archivo (default: 0, no puede ser negativo)."
     )
     parser.add_argument(
         "--url-delay", 
-        type=float, 
+        type=positive_float,  # Validación personalizada
         default=0, 
-        help="Retraso en segundos entre la descarga de cada URL (default: 0)."
+        help="Retraso en segundos entre la descarga de cada URL (default: 0, no puede ser negativo)."
     )
     return parser.parse_args()
 
